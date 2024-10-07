@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
+[CustomEditor(typeof(PathManager))]
 public class PathManagerEditor : Editor
 {
     [SerializeField] private PathManager _pathManager;
@@ -10,7 +11,7 @@ public class PathManagerEditor : Editor
     [SerializeField] private List<Waypoint> _path;
     private List<int> toDelete;
 
-    private Waypoint selectedPoint;
+    private Waypoint selectedPoint = null;
     bool doRepaint = true;
 
     private void OnSceneGUI()
@@ -28,13 +29,13 @@ public class PathManagerEditor : Editor
     public override void OnInspectorGUI()
     {
         serializedObject.Update();
-        _path = _pathManager.path;
+        _path = _pathManager.GetPath();
 
         base.OnInspectorGUI();
         EditorGUILayout.BeginVertical();
         EditorGUILayout.LabelField("Path");
 
-        DrawGUIFOrPoints();
+        DrawGUIForPoints();
 
         if (GUILayout.Button("Add point to path"))
             _pathManager.CreateAddPoint();
@@ -43,7 +44,7 @@ public class PathManagerEditor : Editor
         SceneView.RepaintAll();
     }
 
-    private void DrawGUIFOrPoints()
+    private void DrawGUIForPoints()
     {
         if(_path != null && _path.Count > 0)
         {
@@ -51,20 +52,28 @@ public class PathManagerEditor : Editor
             {
                 EditorGUILayout.BeginHorizontal();
                 Waypoint p = _path[i];
+
+                Color c = GUI.color;
+                if (selectedPoint == p)
+                    GUI.color = Color.green;
+
                 Vector3 oldPos = p.Pos;
                 Vector3 newPos = EditorGUILayout.Vector3Field("", oldPos);
 
                 if (EditorGUI.EndChangeCheck())
                     p.SetPos(newPos);
 
+                // the delete button
                 if (GUILayout.Button("-", GUILayout.Width(25)))
                     toDelete.Add(i);
+
+                GUI.color = c;
 
                 EditorGUILayout.EndHorizontal();
                     
             }
         }
-        if (toDelete.Count >0)
+        if (toDelete.Count > 0)
         {
             foreach (int i in toDelete)
                 _path.RemoveAt(i);
@@ -81,10 +90,11 @@ public class PathManagerEditor : Editor
             foreach (Waypoint wp in path)
             {
                 doRepaint = DrawPoint(wp);
-                int next = (current - 1) % path.Count;
+                int next = (current + 1) % path.Count;
                 Waypoint wpNext = path[next];
 
                 DrawPathLine(wp, wpNext);
+
                 current++;
             }
             if (doRepaint) Repaint();
@@ -103,14 +113,34 @@ public class PathManagerEditor : Editor
     {
         bool isChanged = false;
 
-        Vector3 currPos = wp.Pos;
-        float handlesSize = HandleUtility.GetHandleSize(currPos);
-
-        if(Handles.Button(currPos, Quaternion.identity, 0.25f * handlesSize, 0.25f * handlesSize, Handles.SphereHandleCap))
+        if(selectedPoint == wp)
         {
-            isChanged = true;
-            selectedPoint = wp;
+            Color c = Handles.color;
+            Handles.color = Color.green;
+
+            EditorGUI.BeginChangeCheck();
+            Vector3 oldPos = wp.Pos;
+            Vector3 newPos = Handles.PositionHandle(oldPos, Quaternion.identity);
+
+            float handlesSize = HandleUtility.GetHandleSize(newPos);
+
+            Handles.SphereHandleCap(-1, newPos, Quaternion.identity.normalized, 0.25f * handlesSize, EventType.Repaint);
+            if (EditorGUI.EndChangeCheck())
+                wp.SetPos(newPos);
         }
+        else
+        {
+            Vector3 currPos = wp.Pos;
+            float handlesSize = HandleUtility.GetHandleSize(currPos);
+
+            if (Handles.Button(currPos, Quaternion.identity, 0.25f * handlesSize, 0.25f * handlesSize, Handles.SphereHandleCap))
+            {
+                isChanged = true;
+                selectedPoint = wp;
+            }
+        }
+
+
         return isChanged;
     }
 }

@@ -1,15 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
-public class Waypoint : MonoBehaviour
+public class Waypoint
 {
     [field: SerializeField] public Vector3 Pos { get; private set; }
 
     public Waypoint()
     {
-        Pos = Vector3.zero;
+        Pos = new Vector3(0,0,0);
     }
 
     public void SetPos(Vector3 newPos)
